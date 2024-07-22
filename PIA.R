@@ -1,34 +1,26 @@
-setwd()
+#install.packages("MVN")
+#install.packages("MASS")
+#install.packages("dplyr")
+#Realizamos las configuraciones iniciales.
+setwd("D:/Documents/MASTER/2do Cuatri/MEM/PIA/MEM")
 datos <- read.csv("DatosMEM.csv", sep = ",")[c(1:50),-c(6:10)]
 
-install.packages("MVN")
-install.packages("dplyr")
-install.packages("MASS")
+#Cargamos las librerias necesarias.
+library(MVN)
 library(MASS)
 library(dplyr)
-library(MVN)
+library(ggplot2)
 
-#Utilizamos la librería MVN para comprobar que nuestros datos se distribuyan normal multivariada
-mvn(datos, mvnTest = "royston")
 
-#Vector de medias
-mean_vector <- colMeans(datos)
-#Matriz de covarianzas
-cov_matrix <- cov(datos)
-#Matriz de correlación
-cor_matrix <- cor(datos)
-
-# Al realizar la prueba de normalidad en el conjunto de datos obtenemos que las 5 columnas del conjunto de datos tienen una distribución normal multivariada.
-# Los datos tambien cuentan con una curtosis que es consistente con una distribución normal multivariada.
-
-# Obtenemos graficas para mejorr el analisis exploratorio de los datos.
+# Obtenemos graficas para mejorar el analisis exploratorio de los datos.
 # Definimos la ruta para guardar las imágenes
 output_dir <- "images/"
 
-install.packages("ggplot2")
-library(ggplot2)
 
-#empezamos con estadísticas descriptivas
+########## Parte 1. Analisis exploratorio de datos.  ##############################
+
+summary(datos)
+
 
 # Función para crear y guardar histogramas
 create_histogram <- function(data, column_name) {
@@ -45,12 +37,19 @@ create_histogram <- function(data, column_name) {
   ggsave(paste(output_dir, "histograma_", tolower(column_name), ".png", sep = ""), plot = histograma)
 }
 
-# Crear y guardar histogramas para cada columna
+# Crear y guardar histogramas para cada columna de nuestros datos.
 create_histogram(datos, "Tesla")
 create_histogram(datos, "Meta")
 create_histogram(datos, "Amazon")
 create_histogram(datos, "Microsoft")
 create_histogram(datos, "CEMEX")
+
+#Vector de medias.
+mean_vector <- colMeans(datos)
+#Matriz de covarianzas
+cov_matrix <- cov(datos)
+#Matriz de correlación
+cor_matrix<-cor(datos)
 
 #Vector de medias para la grafica.
 mean_data <- data.frame(
@@ -68,11 +67,23 @@ histograma_medias<-ggplot(mean_data, aes(x = Empresa, y = Media, fill = Empresa)
     axis.text.x = element_text(angle = 45, hjust = 1) 
   )
 
-print(histograma_medias)
 ggsave("images/histograma_medias.png", plot = histograma_medias)
 
-install.packages("reshape2")
-library(reshape2)
+
+
+
+heatmap_correlation<-ggplot(data = melted_correlation_matrix, aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                       midpoint = 0, limit = c(-1, 1), space = "Lab", 
+                       name="Correlación") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+                                   size = 12, hjust = 1)) +
+  coord_fixed() +
+  ggtitle("Mapa de Calor de Correlación") 
+ggsave("images/heatmap_correlation.png", plot = heatmap_correlation)
+
 
 cov_matrix_melt <- melt(cov_matrix)
 
@@ -90,18 +101,41 @@ heatmap_cov <- ggplot(cov_matrix_melt, aes(Var1, Var2, fill = value)) +
 print(heatmap_cov)
 ggsave("images/heatmap_covarianza.png", plot = heatmap_cov)
 
-cor_matrix_melt <- melt(cor_matrix)
 
-# Graficar el heatmap de la matriz de correlación
-heatmap_cor <- ggplot(cor_matrix_melt, aes(Var1, Var2, fill = value)) +
-  geom_tile(color = "black") +  # Delineado negro
-  scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
-                       midpoint = 0, limit = c(min(cor_matrix_melt$value), max(cor_matrix_melt$value)), 
-                       space = "Lab", name="Correlación") +
-  labs(title = "Matriz de Correlación", x = "Variables", y = "Variables") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
-        plot.title = element_text(hjust = 0.5))
 
-print(heatmap_cor)
-ggsave("images/heatmap_correlacion.png", plot = heatmap_cor)
+########## Parte 2. Pruebas de bondad de ajuste.  ##############################
+mvn(datos, mvnTest = "royston")
+# Al realizar la prueba de normalidad en el conjunto de datos obtenemos que las 5 columnas del conjunto de datos tienen una distribución normal.
+# Ademas, por medio de la prueba de Royston podemos ver que todo nuestro conjunto cuenta con una distribución normal multivariada.
+
+
+
+########## Parte 3. Planteamientos de comparativas.  ##############################
+### Empezamos a hacer el planteamiento de variables para la prueba de Barlett. ###
+p <- ncol(datos)
+n <- nrow(datos)
+R <- cor(datos)
+# H0: Las variables son independientes.
+# Ha: Las variables no son independientes
+# Calcular estadístico de prueba
+EP<- -2 * (1 - ((2 * p + 11) / (6 * n))) * log(det(R)**(50 / 2)) 
+# Calcular valor crítico
+qchisq(1 - 0.05, p * (p - 1) / 2) 
+# Se rechaza H0 si EP=86.24749 > 18.30704.
+# Por lo tanto, se rechaza la hipotesis nula. Las variables no son independientes
+### Podemos ver que 
+p_valor <- 1 - pchisq(EP, p * (p - 1) / 2)
+
+
+### Prueba de medias ###############
+#H0: Las medias para las distintas compañias seran Tesla=250, Meta=300,Amazon=130, Microsoft=330, CEMEX=8
+#Ha: Las medias para las distintas compañias seran difererentes a Tesla=250, Meta=300,Amazon=130, Microsoft=330, CEMEX=8
+
+
+
+
+
+
+
+
+
