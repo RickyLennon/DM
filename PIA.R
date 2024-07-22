@@ -1,5 +1,5 @@
 setwd()
-datos <- read.csv("DatosMEM.csv", sep = ",")[c(1:37),-c(6:10)]
+datos <- read.csv("DatosMEM.csv", sep = ",")[c(1:50),-c(6:10)]
 
 install.packages("MVN")
 install.packages("dplyr")
@@ -9,30 +9,14 @@ library(dplyr)
 library(MVN)
 
 #Utilizamos la librería MVN para comprobar que nuestros datos se distribuyan normal multivariada
-mvn(datos, mvnTest = "mardia")
+mvn(datos, mvnTest = "royston")
 
-#Utilizamos la librería MASS para poder generar los elementos restantes a nuestro conjunto de datos
-#y que se distribuyan también normal multivariada
+#Vector de medias
 mean_vector <- colMeans(datos)
+#Matriz de covarianzas
 cov_matrix <- cov(datos)
-n_new_samples <- 25
-set.seed(123)
-new_data <- mvrnorm(n = n_new_samples, mu = mean_vector, Sigma = cov_matrix)
-
-new_data_df <- as.data.frame(new_data)
-colnames(new_data_df) <- colnames(datos)
-
-#Utilizamos la librería dplyr para poder anexar los nuevos elementos generados a los elementos
-#del conjunto original
-expanded_data <- bind_rows(datos, new_data_df)
-
-#Comprobamos si el conjunto de datos nuevo sigue una distribución normal multivariada
-mvn(expanded_data, mvnTest = "royston")
-mvn(expanded_data, mvnTest = "mardia")
-
-mean_vector <- colMeans(expanded_data)
-cov_matrix <- cov(expanded_data)
-cor_matrix <- cor(expanded_data)
+#Matriz de correlación
+cor_matrix <- cor(datos)
 
 # Al realizar la prueba de normalidad en el conjunto de datos obtenemos que las 5 columnas del conjunto de datos tienen una distribución normal multivariada.
 # Los datos tambien cuentan con una curtosis que es consistente con una distribución normal multivariada.
@@ -62,11 +46,11 @@ create_histogram <- function(data, column_name) {
 }
 
 # Crear y guardar histogramas para cada columna
-create_histogram(expanded_data, "Tesla")
-create_histogram(expanded_data, "Meta")
-create_histogram(expanded_data, "Amazon")
-create_histogram(expanded_data, "Microsoft")
-create_histogram(expanded_data, "CEMEX")
+create_histogram(datos, "Tesla")
+create_histogram(datos, "Meta")
+create_histogram(datos, "Amazon")
+create_histogram(datos, "Microsoft")
+create_histogram(datos, "CEMEX")
 
 #Vector de medias para la grafica.
 mean_data <- data.frame(
